@@ -72,3 +72,39 @@ Prima di scrivere codice, l'AI deve leggere l'intera documentazione canonica, ve
 ## Stato
 
 La fase di analisi e specifica è in consolidamento finale. L'implementazione non è ancora iniziata in questo repository.
+
+## Implementazione — fondazione
+
+La prima milestone implementativa stabilisce una struttura leggera coerente con la roadmap:
+
+- `backend/`: API FastAPI versionata sotto `/api/v1` con endpoint health e contratto errori strutturato;
+- `frontend/`: PWA React/TypeScript/Vite con manifest e token colore Pecunia;
+- `docker-compose.yml`: stack self-hosted con `frontend`, `api` e `postgres` su rete privata e volume persistente;
+- `.env.example`: esempio di configurazione senza segreti reali;
+- `.github/workflows/ci.yml`: controlli automatici backend e frontend.
+
+### Avvio locale backend
+
+```bash
+pip install -e 'backend[test]'
+pytest backend
+uvicorn app.main:app --app-dir backend --reload
+```
+
+### Avvio locale frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Avvio Docker
+
+```bash
+cp .env.example .env
+# modificare POSTGRES_PASSWORD in .env prima di un uso reale
+docker compose up --build
+```
+
+L'API espone `GET /api/v1/health`; la PWA è servita su `http://localhost:8080` nello stack Docker.
