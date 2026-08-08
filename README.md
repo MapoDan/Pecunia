@@ -108,3 +108,36 @@ docker compose up --build
 ```
 
 L'API espone `GET /api/v1/health`; la PWA è servita su `http://localhost:8080` nello stack Docker.
+
+## Phase 1 — Identity
+
+La fondazione Identity aggiunge:
+
+- `POST /api/v1/auth/google` per login Google OIDC con verifica backend del token;
+- `GET /api/v1/auth/me` per leggere il profilo autenticato;
+- `POST /api/v1/auth/logout` per revocare la sessione corrente;
+- tabelle `users`, `user_settings`, `auth_sessions`, `audit_events` tramite Alembic;
+- cookie di sessione HttpOnly, token sessione salvato solo come hash HMAC e token CSRF per comandi state-changing;
+- ruolo applicativo `USER`/`ADMIN` distinto dai futuri ruoli di gruppo.
+
+### Migration
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+### Configurazione OAuth
+
+Backend:
+
+```bash
+PECUNIA_GOOGLE_CLIENT_ID=your-google-client-id
+PECUNIA_SESSION_SECRET=replace-with-a-long-random-secret
+```
+
+Frontend:
+
+```bash
+VITE_GOOGLE_CLIENT_ID=your-google-client-id
+```

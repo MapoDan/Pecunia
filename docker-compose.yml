@@ -20,6 +20,8 @@ services:
     environment:
       PECUNIA_DATABASE_URL: postgresql+psycopg://pecunia:${POSTGRES_PASSWORD:-pecunia_dev_only}@postgres:5432/pecunia
       PECUNIA_CORS_ORIGINS: '["http://localhost:5173","http://localhost:8080"]'
+      PECUNIA_GOOGLE_CLIENT_ID: ${PECUNIA_GOOGLE_CLIENT_ID:-}
+      PECUNIA_SESSION_SECRET: ${PECUNIA_SESSION_SECRET:-change-me-only-for-development}
     depends_on:
       postgres:
         condition: service_healthy
