@@ -72,3 +72,107 @@ Prima di scrivere codice, l'AI deve leggere l'intera documentazione canonica, ve
 ## Stato
 
 La fase di analisi e specifica è in consolidamento finale. L'implementazione non è ancora iniziata in questo repository.
+
+## Implementazione — fondazione
+
+La prima milestone implementativa stabilisce una struttura leggera coerente con la roadmap:
+
+- `backend/`: API FastAPI versionata sotto `/api/v1` con endpoint health e contratto errori strutturato;
+- `frontend/`: PWA React/TypeScript/Vite con manifest e token colore Pecunia;
+- `docker-compose.yml`: stack self-hosted con `frontend`, `api` e `postgres` su rete privata e volume persistente;
+- `.env.example`: esempio di configurazione senza segreti reali;
+- `.github/workflows/ci.yml`: controlli automatici backend e frontend.
+
+### Avvio locale backend
+
+```bash
+pip install -e 'backend[test]'
+pytest backend
+uvicorn app.main:app --app-dir backend --reload
+```
+
+### Avvio locale frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Avvio Docker
+
+```bash
+cp .env.example .env
+# modificare POSTGRES_PASSWORD in .env prima di un uso reale
+docker compose up --build
+```
+
+L'API espone `GET /api/v1/health`; la PWA è servita su `http://localhost:8080` nello stack Docker.
+
+## Phase 1 — Identity
+
+La fondazione Identity aggiunge:
+
+- `POST /api/v1/auth/google` per login Google OIDC con verifica backend del token;
+- `GET /api/v1/auth/me` per leggere il profilo autenticato;
+- `POST /api/v1/auth/logout` per revocare la sessione corrente;
+- tabelle `users`, `user_settings`, `auth_sessions`, `audit_events` tramite Alembic;
+- cookie di sessione HttpOnly, token sessione salvato solo come hash HMAC e token CSRF per comandi state-changing;
+- ruolo applicativo `USER`/`ADMIN` distinto dai futuri ruoli di gruppo.
+
+### Migration
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+### Configurazione OAuth
+
+Backend:
+
+```bash
+PECUNIA_GOOGLE_CLIENT_ID=your-google-client-id
+PECUNIA_SESSION_SECRET=replace-with-a-long-random-secret
+```
+
+Frontend:
+
+```bash
+VITE_GOOGLE_CLIENT_ID=your-google-client-id
+```
+
+## Phase 2 — Expense engine
+
+La fondazione spese manuali aggiunge:
+
+- `GET /api/v1/categories` e `GET /api/v1/payment-methods` per cataloghi standard;
+- `GET /api/v1/classification/suggestions?q=...` per suggerimenti leggeri deterministici;
+- `POST /api/v1/expenses`, `GET /api/v1/expenses`, `GET /api/v1/expenses/{id}`, `PATCH /api/v1/expenses/{id}`, `DELETE /api/v1/expenses/{id}`;
+- merchant e tag personali creati in modo controllato durante l'inserimento;
+- importi monetari `Decimal`/`NUMERIC(14,2)` e soft-delete;
+- controllo ownership server-side tramite utente autenticato.
+
+### Migration Phase 2
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+## Phase 3 — Payment and personal share
+
+La Phase 3 aggiunge:
+
+- `expense_payments` per rappresentare come una spesa è stata pagata;
+- `expense_allocations` per rappresentare la quota economica/personale;
+- supporto API a `payments`, `personal_amount` e `allocations` nelle create/update di `/api/v1/expenses`;
+- validazione backend dell'invariante `sum(payments) = expense.amount`;
+- validazione backend della quota personale tra zero e importo lordo.
+
+### Migration Phase 3
+
+```bash
+cd backend
+alembic upgrade head
+```
