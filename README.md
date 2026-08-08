@@ -2,90 +2,73 @@
 
 Pecunia è una Progressive Web App (PWA) self-hosted per il tracciamento e l'analisi delle spese personali e condivise.
 
-La V1 è progettata per funzionare su un NAS domestico tramite Docker, con backend API, worker per le attività asincrone e PostgreSQL.
+## Scopo di questo repository
 
-## Stato del progetto
+**Questo repository contiene esclusivamente analisi, specifiche e decisioni progettuali. Non contiene l'implementazione dell'applicazione.**
 
-**Milestone 1 — Bootstrap tecnico:** in corso.
+Lo sviluppo software sarà eseguito successivamente da un'AI/engineering agent specializzato, utilizzando questa documentazione come fonte di verità.
 
-Sono presenti:
+## V1 in breve
 
-- struttura iniziale frontend React + TypeScript + Vite;
-- backend FastAPI;
-- PostgreSQL tramite Docker Compose;
-- health checks API;
-- primo test backend;
-- PWA manifest;
-- container frontend/backend;
-- CI iniziale.
+- tracciamento delle spese;
+- inserimento manuale;
+- import storico CSV;
+- PSD2/Open Banking con operazioni PENDING da confermare;
+- pagamento con più modalità nella stessa spesa;
+- quota personale per spese condivise;
+- classificazione e suggerimenti automatici;
+- spese straordinarie separabili dalle statistiche ordinarie;
+- dashboard configurabile;
+- Centro Attività/Notifiche;
+- utenti multipli;
+- login Google e predisposizione Passkey;
+- gruppi e conto cointestato di gruppo;
+- visibilità genitore/figlio secondo permessi;
+- dashboard amministrativa di utilizzo/performance;
+- database cifrato e backup/restore gestiti dal backend/infrastruttura.
 
-Le funzionalità di dominio verranno implementate progressivamente tramite vertical slices.
+**Budget, OCR, allegati e funzionalità patrimoniali non fanno parte della V1.**
 
-## Avvio locale
+## Struttura
 
-Copiare `.env.example` in `.env`, impostare almeno i secret locali e avviare:
-
-```bash
-docker compose -f docker/compose.dev.yml up --build
+```text
+Pecunia/
+├── README.md
+├── LICENSE
+├── docs/
+├── Logo/
+├── microservices/
+└── adr/
 ```
 
-Frontend: `http://localhost:5173`  
-API: `http://localhost:8000`  
-API health: `http://localhost:8000/health/live`
+## Documentazione canonica
 
-Il database non deve essere esposto in produzione.
+- `00_Vision.md`
+- `01_Functional_Requirements.md`
+- `02_Non_Functional_Requirements.md`
+- `03_User_Stories.md`
+- `04_Business_Rules.md`
+- `05_Data_Model.md`
+- `06_System_Architecture.md`
+- `07_API_Design.md`
+- `08_UI_UX_Guidelines.md`
+- `09_Dashboard_Specification.md`
+- `10_Backlog.md`
+- `11_AI_DEVELOPMENT_GUIDELINES.md`
+- `12_Coding_Standards.md`
+- `13_Technology_Decisions.md`
+- `14_Implementation_Roadmap.md`
+- `15_Acceptance_Criteria.md`
+- `Security_Specification.md`
 
-## Documentazione
+## Regola per l'AI sviluppatrice
 
-La documentazione funzionale e tecnica è la fonte di verità del progetto.
-
-- [Visione](docs/00_Vision.md)
-- [Requisiti funzionali](docs/01_Functional_Requirements.md)
-- [Requisiti non funzionali](docs/02_Non_Functional_Requirements.md)
-- [User stories](docs/03_User_Stories.md)
-- [Regole di business](docs/04_Business_Rules.md)
-- [Modello dati](docs/06_Data_Model.md)
-- [Architettura](docs/05_System_Architecture.md)
-- [API](docs/07_API_Specification.md)
-- [Frontend/UX](docs/08_Frontend_UX_Specification.md)
-- [Sicurezza](docs/09_Security_Specification.md)
-- [Development Guidelines](docs/10_Development_Guidelines.md)
-
-## Principi di progetto
-
-1. **Rapidità di inserimento:** una spesa deve poter essere registrata in pochi secondi.
-2. **Automazione assistita:** il sistema suggerisce, l'utente conferma quando l'informazione ha impatto contabile.
-3. **Nessun dato finanziario inventato:** le spese derivano da inserimento manuale, import o operazioni PSD2 effettivamente rilevate e confermate.
-4. **Separazione dei concetti:** spesa, movimento bancario, metodo di pagamento, origine e contesto di gruppo sono entità distinte.
-5. **Privacy:** i dati personali restano personali salvo condivisione esplicita tramite gruppi.
-6. **Self-hosted e leggero:** il backend deve essere adatto a un NAS domestico con risorse limitate.
-7. **Sicurezza by design:** authorization server-side, secret management, cifratura e minimizzazione dei dati.
-8. **Evolutivo:** V1 deve essere completa nel proprio perimetro senza introdurre complessità necessaria a funzionalità future.
+Prima di scrivere codice, l'AI deve leggere l'intera documentazione canonica, verificare eventuali conflitti e seguire la roadmap. In caso di ambiguità deve privilegiare le decisioni funzionali e di sicurezza già documentate e non inventare comportamenti di dominio.
 
 ## Branding
 
-I file ufficiali del brand saranno inseriti in `frontend/public/branding/`.
+`Logo/` è riservata al logo e all'icona ufficiale di Pecunia. Le immagini definitive verranno aggiunte separatamente.
 
-File previsti:
+## Stato
 
-- `pecunia-logo.svg` — logo completo;
-- `pecunia-icon.svg` — icona applicazione;
-- eventuali favicon e asset PWA.
-
-## Sviluppo
-
-Lo sviluppo segue una strategia a vertical slices:
-
-1. bootstrap + autenticazione;
-2. inserimento/lista spese;
-3. split pagamenti e quota personale;
-4. categorie/negozi/suggerimenti;
-5. dashboard;
-6. PSD2;
-7. Centro Attività;
-8. CSV;
-9. gruppi;
-10. dashboard admin;
-11. hardening e deployment.
-
-Ogni slice deve essere testabile e lasciare il progetto in uno stato funzionante.
+La fase di analisi e specifica è in consolidamento finale. L'implementazione non è ancora iniziata in questo repository.
