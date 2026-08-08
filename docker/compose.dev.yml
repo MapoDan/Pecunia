@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pecunia}
+      POSTGRES_USER: ${POSTGRES_USER:-pecunia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pecunia} -d ${POSTGRES_DB:-pecunia}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pecunia}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-pecunia}
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:5173}
+      SESSION_SECRET: ${SESSION_SECRET:-change-me}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+    environment:
+      VITE_API_ORIGIN: ${API_ORIGIN:-http://localhost:8000}
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres-data:
