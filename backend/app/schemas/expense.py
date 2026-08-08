@@ -1,0 +1,85 @@
+from datetime import date
+from decimal import Decimal
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class CategoryResponse(BaseModel):
+    id: UUID
+    name: str
+    parent_id: UUID | None = None
+    children: list["CategoryResponse"] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentMethodTypeResponse(BaseModel):
+    id: UUID
+    code: str
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExpenseCreate(BaseModel):
+    amount: Decimal = Field(gt=Decimal("0"), max_digits=14, decimal_places=2)
+    description: str = Field(min_length=1, max_length=500)
+    transaction_date: date
+    currency: str = Field(default="EUR", min_length=3, max_length=3)
+    extraordinary: bool = False
+    category_id: UUID | None = None
+    subcategory_id: UUID | None = None
+    merchant_name: str | None = Field(default=None, max_length=255)
+    payment_method_type_id: UUID | None = None
+    tags: list[str] = Field(default_factory=list)
+    notes: str | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def uppercase_currency(cls, value: str) -> str:
+        return value.upper()
+
+
+class ExpenseUpdate(BaseModel):
+    amount: Decimal | None = Field(default=None, gt=Decimal("0"), max_digits=14, decimal_places=2)
+    description: str | None = Field(default=None, min_length=1, max_length=500)
+    transaction_date: date | None = None
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
+    extraordinary: bool | None = None
+    category_id: UUID | None = None
+    subcategory_id: UUID | None = None
+    merchant_name: str | None = Field(default=None, max_length=255)
+    payment_method_type_id: UUID | None = None
+    tags: list[str] | None = None
+    notes: str | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def uppercase_currency(cls, value: str | None) -> str | None:
+        return value.upper() if value else value
+
+
+class ExpenseResponse(BaseModel):
+    id: UUID
+    amount: Decimal
+    personal_amount: Decimal
+    currency: str
+    description: str
+    transaction_date: date
+    extraordinary: bool
+    source: str
+    category_id: UUID | None
+    subcategory_id: UUID | None
+    merchant_name: str | None
+    payment_method_type_id: UUID | None
+    tags: list[str]
+    notes: str | None
+
+
+class SuggestionResponse(BaseModel):
+    merchant_name: str | None = None
+    category_id: UUID | None = None
+    subcategory_id: UUID | None = None
+    payment_method_type_id: UUID | None = None
+    reason: str

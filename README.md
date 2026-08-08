@@ -141,3 +141,21 @@ Frontend:
 ```bash
 VITE_GOOGLE_CLIENT_ID=your-google-client-id
 ```
+
+## Phase 2 — Expense engine
+
+La fondazione spese manuali aggiunge:
+
+- `GET /api/v1/categories` e `GET /api/v1/payment-methods` per cataloghi standard;
+- `GET /api/v1/classification/suggestions?q=...` per suggerimenti leggeri deterministici;
+- `POST /api/v1/expenses`, `GET /api/v1/expenses`, `GET /api/v1/expenses/{id}`, `PATCH /api/v1/expenses/{id}`, `DELETE /api/v1/expenses/{id}`;
+- merchant e tag personali creati in modo controllato durante l'inserimento;
+- importi monetari `Decimal`/`NUMERIC(14,2)` e soft-delete;
+- controllo ownership server-side tramite utente autenticato.
+
+### Migration Phase 2
+
+```bash
+cd backend
+alembic upgrade head
+```
