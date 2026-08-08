@@ -22,6 +22,30 @@ class PaymentMethodTypeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ExpensePaymentInput(BaseModel):
+    payment_method_type_id: UUID
+    amount: Decimal = Field(gt=Decimal("0"), max_digits=14, decimal_places=2)
+    note: str | None = Field(default=None, max_length=255)
+
+
+class ExpensePaymentResponse(BaseModel):
+    payment_method_type_id: UUID
+    amount: Decimal
+    note: str | None
+
+
+class ExpenseAllocationInput(BaseModel):
+    participant_label: str = Field(min_length=1, max_length=255)
+    amount: Decimal = Field(ge=Decimal("0"), max_digits=14, decimal_places=2)
+    is_owner_share: bool = False
+
+
+class ExpenseAllocationResponse(BaseModel):
+    participant_label: str
+    amount: Decimal
+    is_owner_share: bool
+
+
 class ExpenseCreate(BaseModel):
     amount: Decimal = Field(gt=Decimal("0"), max_digits=14, decimal_places=2)
     description: str = Field(min_length=1, max_length=500)
@@ -32,6 +56,9 @@ class ExpenseCreate(BaseModel):
     subcategory_id: UUID | None = None
     merchant_name: str | None = Field(default=None, max_length=255)
     payment_method_type_id: UUID | None = None
+    payments: list[ExpensePaymentInput] = Field(default_factory=list)
+    personal_amount: Decimal | None = Field(default=None, ge=Decimal("0"), max_digits=14, decimal_places=2)
+    allocations: list[ExpenseAllocationInput] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     notes: str | None = None
 
@@ -51,6 +78,9 @@ class ExpenseUpdate(BaseModel):
     subcategory_id: UUID | None = None
     merchant_name: str | None = Field(default=None, max_length=255)
     payment_method_type_id: UUID | None = None
+    payments: list[ExpensePaymentInput] | None = None
+    personal_amount: Decimal | None = Field(default=None, ge=Decimal("0"), max_digits=14, decimal_places=2)
+    allocations: list[ExpenseAllocationInput] | None = None
     tags: list[str] | None = None
     notes: str | None = None
 
@@ -63,7 +93,6 @@ class ExpenseUpdate(BaseModel):
 class ExpenseResponse(BaseModel):
     id: UUID
     amount: Decimal
-    personal_amount: Decimal
     currency: str
     description: str
     transaction_date: date
@@ -73,6 +102,9 @@ class ExpenseResponse(BaseModel):
     subcategory_id: UUID | None
     merchant_name: str | None
     payment_method_type_id: UUID | None
+    payments: list[ExpensePaymentResponse]
+    personal_amount: Decimal
+    allocations: list[ExpenseAllocationResponse]
     tags: list[str]
     notes: str | None
 

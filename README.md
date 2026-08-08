@@ -159,3 +159,20 @@ La fondazione spese manuali aggiunge:
 cd backend
 alembic upgrade head
 ```
+
+## Phase 3 — Payment and personal share
+
+La Phase 3 aggiunge:
+
+- `expense_payments` per rappresentare come una spesa è stata pagata;
+- `expense_allocations` per rappresentare la quota economica/personale;
+- supporto API a `payments`, `personal_amount` e `allocations` nelle create/update di `/api/v1/expenses`;
+- validazione backend dell'invariante `sum(payments) = expense.amount`;
+- validazione backend della quota personale tra zero e importo lordo.
+
+### Migration Phase 3
+
+```bash
+cd backend
+alembic upgrade head
+```

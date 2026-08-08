@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.expense import Category, Expense, ExpenseSource, Merchant, PaymentMethodType, Tag
+from app.models.expense import Category, Expense, ExpenseAllocation, ExpensePayment, ExpenseSource, Merchant, PaymentMethodType, Tag
 from app.models.identity import AuditEvent, User, utcnow
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate
 
@@ -87,6 +87,46 @@ def validate_payment_method(db: Session, payment_method_type_id: uuid.UUID | Non
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Payment method not found")
 
 
+def payment_total(amounts: list[Decimal]) -> Decimal:
+    return sum((quantize_money(amount) for amount in amounts), Decimal("0.00"))
+
+
+def validate_payment_split(db: Session, amount: Decimal, payment_method_type_id: uuid.UUID | None, payments: list) -> list[ExpensePayment]:
+    if not payments:
+        if payment_method_type_id is None:
+            return []
+        validate_payment_method(db, payment_method_type_id)
+        return [ExpensePayment(payment_method_type_id=payment_method_type_id, amount=amount)]
+    split_total = payment_total([payment.amount for payment in payments])
+    if split_total != amount:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Payment split total must equal expense amount")
+    result: list[ExpensePayment] = []
+    for payment in payments:
+        validate_payment_method(db, payment.payment_method_type_id)
+        result.append(ExpensePayment(payment_method_type_id=payment.payment_method_type_id, amount=quantize_money(payment.amount), note=payment.note))
+    return result
+
+
+def build_allocations(user: User, amount: Decimal, personal_amount: Decimal | None, allocations: list) -> tuple[Decimal, list[ExpenseAllocation]]:
+    if allocations:
+        owner_total = Decimal("0.00")
+        built: list[ExpenseAllocation] = []
+        for allocation in allocations:
+            allocation_amount = quantize_money(allocation.amount)
+            if allocation_amount > amount:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Allocation cannot exceed expense amount")
+            if allocation.is_owner_share:
+                owner_total += allocation_amount
+            built.append(ExpenseAllocation(participant_user_id=user.id if allocation.is_owner_share else None, participant_label=allocation.participant_label.strip(), amount=allocation_amount, is_owner_share=allocation.is_owner_share))
+        if owner_total > amount:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Personal amount cannot exceed expense amount")
+        return owner_total, built
+    effective_personal = quantize_money(personal_amount if personal_amount is not None else amount)
+    if effective_personal > amount:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Personal amount cannot exceed expense amount")
+    return effective_personal, [ExpenseAllocation(participant_user_id=user.id, participant_label="Personale", amount=effective_personal, is_owner_share=True)]
+
+
 def validate_category_pair(db: Session, category_id: uuid.UUID | None, subcategory_id: uuid.UUID | None) -> None:
     if category_id is None and subcategory_id is not None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Subcategory requires a category")
@@ -112,6 +152,8 @@ def serialize_expense(expense: Expense) -> dict[str, object]:
         "subcategory_id": expense.subcategory_id,
         "merchant_name": getattr(expense, "merchant", None).name if getattr(expense, "merchant", None) else None,
         "payment_method_type_id": expense.payment_method_type_id,
+        "payments": [{"payment_method_type_id": payment.payment_method_type_id, "amount": payment.amount, "note": payment.note} for payment in expense.payments],
+        "allocations": [{"participant_label": allocation.participant_label, "amount": allocation.amount, "is_owner_share": allocation.is_owner_share} for allocation in expense.allocations],
         "tags": [tag.name for tag in expense.tags],
         "notes": expense.notes,
     }
@@ -119,14 +161,15 @@ def serialize_expense(expense: Expense) -> dict[str, object]:
 
 def create_expense(db: Session, user: User, payload: ExpenseCreate) -> Expense:
     validate_category_pair(db, payload.category_id, payload.subcategory_id)
-    validate_payment_method(db, payload.payment_method_type_id)
     amount = quantize_money(payload.amount)
+    payments = validate_payment_split(db, amount, payload.payment_method_type_id, payload.payments)
+    personal_amount, allocations = build_allocations(user, amount, payload.personal_amount, payload.allocations)
     merchant = get_or_create_merchant(db, user, payload.merchant_name or payload.description)
     tags = get_or_create_tags(db, user, payload.tags)
     expense = Expense(
         owner_user_id=user.id,
         amount=amount,
-        personal_amount=amount,
+        personal_amount=personal_amount,
         currency=payload.currency,
         transaction_date=payload.transaction_date,
         description=payload.description.strip(),
@@ -138,6 +181,8 @@ def create_expense(db: Session, user: User, payload: ExpenseCreate) -> Expense:
         source=ExpenseSource.manual,
         notes=payload.notes,
     )
+    expense.payments = payments
+    expense.allocations = allocations
     expense.tags = tags
     db.add(expense)
     db.flush()
@@ -146,7 +191,7 @@ def create_expense(db: Session, user: User, payload: ExpenseCreate) -> Expense:
 
 
 def owned_expense_query(user: User) -> Select[tuple[Expense]]:
-    return select(Expense).where(Expense.owner_user_id == user.id, Expense.deleted_at.is_(None)).options(selectinload(Expense.tags))
+    return select(Expense).where(Expense.owner_user_id == user.id, Expense.deleted_at.is_(None)).options(selectinload(Expense.tags), selectinload(Expense.payments), selectinload(Expense.allocations), selectinload(Expense.merchant))
 
 
 def get_owned_expense(db: Session, user: User, expense_id: uuid.UUID) -> Expense:
@@ -161,11 +206,22 @@ def update_expense(db: Session, user: User, expense_id: uuid.UUID, payload: Expe
     category_id = payload.category_id if payload.category_id is not None else expense.category_id
     subcategory_id = payload.subcategory_id if payload.subcategory_id is not None else expense.subcategory_id
     validate_category_pair(db, category_id, subcategory_id)
-    validate_payment_method(db, payload.payment_method_type_id)
+    effective_amount = quantize_money(payload.amount) if payload.amount is not None else expense.amount
+    if payload.payments is not None:
+        expense.payments = validate_payment_split(db, effective_amount, payload.payment_method_type_id, payload.payments)
+    elif payload.payment_method_type_id is not None:
+        expense.payments = validate_payment_split(db, effective_amount, payload.payment_method_type_id, [])
+    elif payload.amount is not None:
+        if len(expense.payments) == 1:
+            expense.payments[0].amount = effective_amount
+        elif expense.payments:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Updated amount requires a reconciled payment split")
+    if payload.allocations is not None or payload.personal_amount is not None:
+        expense.personal_amount, expense.allocations = build_allocations(user, effective_amount, payload.personal_amount, payload.allocations or [])
+    elif payload.amount is not None and expense.personal_amount > effective_amount:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Personal amount cannot exceed expense amount")
     if payload.amount is not None:
-        amount = quantize_money(payload.amount)
-        expense.amount = amount
-        expense.personal_amount = amount
+        expense.amount = effective_amount
     if payload.description is not None:
         expense.description = payload.description.strip()
     if payload.transaction_date is not None:

@@ -98,4 +98,31 @@ class Expense(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     merchant: Mapped[Merchant | None] = relationship()
+    payments: Mapped[list["ExpensePayment"]] = relationship(cascade="all, delete-orphan")
+    allocations: Mapped[list["ExpenseAllocation"]] = relationship(cascade="all, delete-orphan")
     tags: Mapped[list[Tag]] = relationship(secondary=expense_tags)
+
+
+class ExpensePayment(Base):
+    __tablename__ = "expense_payments"
+    __table_args__ = (Index("ix_expense_payments_expense", "expense_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    expense_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("expenses.id", ondelete="CASCADE"), nullable=False)
+    payment_method_type_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("payment_method_types.id"), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    payment_method_type: Mapped[PaymentMethodType] = relationship()
+
+
+class ExpenseAllocation(Base):
+    __tablename__ = "expense_allocations"
+    __table_args__ = (Index("ix_expense_allocations_expense", "expense_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    expense_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("expenses.id", ondelete="CASCADE"), nullable=False)
+    participant_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    participant_label: Mapped[str] = mapped_column(String(255), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    is_owner_share: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

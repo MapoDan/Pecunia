@@ -1,7 +1,9 @@
 export type User = { id: string; email: string; display_name: string; role: 'USER' | 'ADMIN'; status: 'ACTIVE' | 'DISABLED'; personal_context_id: string; settings: { default_currency: string; locale: string; timezone: string; dashboard_config: Record<string, unknown>; notification_preferences: Record<string, unknown> } };
 export type Category = { id: string; name: string; parent_id: string | null; children: Category[] };
 export type PaymentMethodType = { id: string; code: string; name: string };
-export type Expense = { id: string; amount: string; personal_amount: string; currency: string; description: string; transaction_date: string; extraordinary: boolean; source: string; category_id: string | null; subcategory_id: string | null; merchant_name: string | null; payment_method_type_id: string | null; tags: string[]; notes: string | null };
+export type ExpensePayment = { payment_method_type_id: string; amount: string; note: string | null };
+export type ExpenseAllocation = { participant_label: string; amount: string; is_owner_share: boolean };
+export type Expense = { id: string; amount: string; personal_amount: string; currency: string; description: string; transaction_date: string; extraordinary: boolean; source: string; category_id: string | null; subcategory_id: string | null; merchant_name: string | null; payment_method_type_id: string | null; payments: ExpensePayment[]; allocations: ExpenseAllocation[]; tags: string[]; notes: string | null };
 export type Suggestion = { merchant_name: string | null; category_id: string | null; subcategory_id: string | null; payment_method_type_id: string | null; reason: string };
 
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -18,4 +20,4 @@ export async function fetchCategories(): Promise<Category[]> { return api('/cate
 export async function fetchPaymentMethods(): Promise<PaymentMethodType[]> { return api('/payment-methods'); }
 export async function fetchExpenses(): Promise<Expense[]> { return api('/expenses'); }
 export async function fetchSuggestion(text: string): Promise<Suggestion> { return api(`/classification/suggestions?q=${encodeURIComponent(text)}`); }
-export async function createExpense(payload: { amount: string; description: string; transaction_date: string; currency: string; extraordinary: boolean; category_id: string | null; subcategory_id: string | null; merchant_name: string; payment_method_type_id: string | null; tags: string[] }): Promise<Expense> { return api('/expenses', { method: 'POST', body: JSON.stringify(payload) }); }
+export async function createExpense(payload: { amount: string; description: string; transaction_date: string; currency: string; extraordinary: boolean; category_id: string | null; subcategory_id: string | null; merchant_name: string; payment_method_type_id: string | null; payments: { payment_method_type_id: string; amount: string; note?: string | null }[]; personal_amount: string | null; allocations: { participant_label: string; amount: string; is_owner_share: boolean }[]; tags: string[] }): Promise<Expense> { return api('/expenses', { method: 'POST', body: JSON.stringify(payload) }); }
