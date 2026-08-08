@@ -1,0 +1,11 @@
+{
+  "name": "Pecunia",
+  "short_name": "Pecunia",
+  "description": "Tracciamento e analisi delle spese",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#111827",
+  "lang": "it",
+  "icons": []
+}
