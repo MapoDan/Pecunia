@@ -1,131 +1,95 @@
 # Pecunia — AI Development Guidelines
 
-Questo documento è vincolante per gli agenti AI che sviluppano Pecunia, incluso Codex.
+Questo documento è vincolante per l'agente AI che svilupperà Pecunia.
 
 ## 1. Source of truth
 
-La documentazione presente in `docs/` è la fonte primaria dei requisiti. Prima di implementare una funzionalità, l'agente deve verificare i requisiti e le regole di business pertinenti.
+Prima di implementare qualsiasi funzionalità leggere almeno:
 
-In caso di conflitto tra codice e documentazione, non assumere automaticamente che il codice sia corretto: identificare il conflitto e correggere la documentazione o il codice secondo la decisione più recente esplicitamente approvata.
+- `00_Vision.md`
+- `01_Functional_Requirements.md`
+- `02_Non_Functional_Requirements.md`
+- `03_User_Stories.md`
+- `04_Business_Rules.md`
+- `05_Data_Model.md`
+- `06_System_Architecture.md`
+- `07_API_Design.md`
+- `08_UI_UX_Guidelines.md`
+- `09_Dashboard_Specification.md`
+- `10_Backlog.md`
+- `12_Coding_Standards.md`
+- `13_Technology_Decisions.md`
+- `14_Implementation_Roadmap.md`
+- `15_Acceptance_Criteria.md`
+- `Security_Specification.md`
+- ADR pertinenti.
+
+La documentazione è la fonte primaria. Questo repository di analisi non contiene l'implementazione dell'applicazione.
 
 ## 2. Non inventare requisiti
 
-L'agente non deve:
+Non aggiungere funzionalità non richieste, non introdurre budget/investimenti nella V1 e non creare dati finanziari che non rappresentano una spesa reale o un movimento PSD2 effettivamente rilevato.
 
-- aggiungere funzionalità non richieste;
-- introdurre automaticamente budget, investimenti o gestione patrimoniale;
-- creare dati finanziari che non rappresentano movimenti o spese reali;
-- modificare una regola di business per semplificare l'implementazione.
-
-Se un dettaglio necessario non è definito, deve essere marcato come decisione aperta oppure proporre una soluzione prima di applicarla a parti strutturali del sistema.
+Se un dettaglio necessario non è definito, identificare l'ambiguità e proporre una decisione prima di introdurre un comportamento strutturale.
 
 ## 3. Priorità
 
-Ordine di priorità:
-
-1. correttezza dei dati finanziari;
-2. sicurezza e privacy;
-3. rispetto delle business rules;
-4. semplicità e manutenibilità;
+1. correttezza finanziaria;
+2. sicurezza/privacy;
+3. business rules;
+4. semplicità/manutenibilità;
 5. performance sul NAS;
 6. UX;
-7. ottimizzazioni premature solo se misurate.
+7. ottimizzazione solo se misurata.
 
 ## 4. PSD2
 
-Le operazioni PSD2 rilevate sono sospese per definizione. Non devono diventare spese contabilizzate senza una decisione dell'utente.
+Le operazioni rilevate sono PENDING per definizione. Nessuna diventa spesa senza decisione esplicita dell'utente.
 
-Una spesa può avere un importo diverso da quello del movimento PSD2 collegato. Il collegamento deve essere preservato per la tracciabilità.
+Durante l'accettazione l'importo può cambiare e possono essere aggiunti altri metodi di pagamento. Il collegamento alla transazione bancaria deve rimanere tracciabile.
+
+La sincronizzazione iniziale parte dalla data di collegamento del conto; import CSV/manuali possono avere date storiche.
 
 ## 5. Separazione dei concetti
 
-Non confondere:
-
-- movimento bancario;
-- spesa;
-- split di pagamento;
-- metodo di pagamento;
-- gruppo;
-- categoria;
-- origine del dato.
-
-Il modello dati deve mantenere queste responsabilità separate.
+Non confondere movimento bancario, spesa, split di pagamento, metodo di pagamento, gruppo, categoria e origine del dato.
 
 ## 6. Automazione
 
-Il sistema può suggerire classificazioni, gruppi, tag e ricorrenze. I suggerimenti devono essere spiegabili e, quando incidono sulla contabilizzazione, confermabili dall'utente.
-
-Preferire regole leggere e deterministiche rispetto a modelli AI locali pesanti.
+Il sistema può suggerire classificazioni e metadati. I suggerimenti non devono sostituire silenziosamente una decisione contabile dell'utente. Preferire regole leggere e deterministiche.
 
 ## 7. Performance
 
-Ogni servizio deve essere progettato per un NAS domestico:
-
-- evitare processi residenti inutili;
-- limitare dipendenze pesanti;
-- usare query indicizzate;
-- paginare liste e ricerche;
-- evitare elaborazioni O(n) non necessarie su grandi dataset;
-- spostare i lavori non interattivi in job asincroni solo quando necessario.
+Il NAS è un vincolo architetturale: evitare servizi residenti inutili, dipendenze pesanti, query non indicizzate, full-history downloads e sistemi distribuiti sproporzionati.
 
 ## 8. Sicurezza
 
-- Segreti e credenziali solo tramite configurazione sicura/secrets.
-- Mai inserire chiavi nel repository.
-- Validare input lato backend.
-- Applicare autorizzazione server-side, non solo lato UI.
-- Loggare eventi tecnici senza esporre dati finanziari non necessari.
-- Non loggare token OAuth, chiavi database o dati sensibili completi.
+Segreti solo tramite secret/configuration management. Autorizzazione sempre server-side. Validazione backend. Nessun token/chiave nei log o nel frontend.
 
 ## 9. Database
 
-Le modifiche allo schema devono essere versionate tramite migration. Non usare modifiche manuali non riproducibili in produzione.
-
-Le migration devono essere reversibili quando tecnicamente possibile e testate.
+Ogni modifica schema richiede migration versionata e testabile. Le invarianti finanziarie devono essere protette sia dal dominio sia, dove utile, da constraint DB.
 
 ## 10. API
 
-Le API devono avere contratti espliciti e versionati. Errori e validazioni devono avere formato coerente.
-
-L'API deve applicare autorizzazione per utente e gruppo a ogni operazione sensibile.
+API versionate e con contratti espliciti. Errori coerenti, pagination, filtering e idempotenza per comandi finanziari retryable.
 
 ## 11. Testing
 
-Ogni nuova funzionalità significativa deve includere test automatici.
-
-Priorità dei test:
-
-- business rules;
-- autorizzazione;
-- calcolo importi e split;
-- PSD2;
-- import CSV;
-- notifiche;
-- migration;
-- API contract.
+Priorità: business rules, authorization, importi/split, PSD2 state transitions, CSV import, activity center, migration, API contract e critical E2E journeys.
 
 ## 12. UX
 
-La UI non deve obbligare l'utente a compilare campi non indispensabili per registrare una spesa.
+Minimo numero di campi obbligatori. Suggerimenti automatici. Le PENDING PSD2 sono raggiungibili direttamente dal Centro Attività e possono essere elaborate toccando la voce.
 
-Le operazioni PSD2 sospese devono essere raggiungibili direttamente dal Centro Attività e apribili con un'interazione semplice.
+## 13. Architettura
 
-## 13. Cambi architetturali
+Non introdurre Redis, broker, vector DB, LLM locale, Kubernetes o altri componenti significativi senza un requisito concreto e un ADR.
 
-Prima di introdurre una nuova infrastruttura significativa, verificare se è realmente necessaria. Non aggiungere Redis, message broker, vector database, LLM locali o altri componenti solo perché sono tecnicamente disponibili.
+## 14. Vertical slices
 
-Ogni decisione architetturale significativa deve essere documentata in un ADR.
+Seguire la roadmap. Ogni slice deve lasciare il progetto in uno stato coerente e testabile. Non costruire tutto il backend prima di collegare il frontend.
 
-## 14. Definition of Done
+## 15. Definition of Done
 
-Una funzionalità è completata solo quando:
-
-- requisiti implementati;
-- business rules rispettate;
-- autorizzazioni verificate;
-- test presenti e superati;
-- migration presenti se necessarie;
-- documentazione aggiornata;
-- logging e gestione errori adeguati;
-- nessun segreto nel codice;
-- comportamento verificato su Docker.
+Una funzionalità è completata solo quando requisiti, business rules, autorizzazioni, test, migration, error handling, documentazione e acceptance criteria risultano soddisfatti.
